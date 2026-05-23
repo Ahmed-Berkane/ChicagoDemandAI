@@ -8,15 +8,15 @@ Decision-making AI system for small Chicago businesses that predicts demand and 
 ├── src/                  # Python package (deployed)
 ├── requirements.txt      # dependencies (deployed)
 ├── models/               # saved preprocessor + model (deployed)
-├── data/                  # raw portal files and curated event calendar
+├── data/processed/       # unified_daily_demand.parquet (deployed)
+├── data/                 # raw portal CSVs — not in git (local only)
 ├── app_streamlit/        # Streamlit app (deployed)
 ├── scripts/              # local CLI — not in git (regenerate data/models)
 ├── notebooks/            # EDA / training — not in git
-├── docs/                 # documentation — not in git
-└── data/                 # large CSVs — not in git (see scripts/)
+└── docs/                 # documentation — not in git
 ```
 
-**Git** only tracks deployment files. Large datasets and notebooks stay on your machine; use `scripts/fetch_external_data.py` and `scripts/build_unified_dataset.py` to rebuild.
+**Git** tracks deployment code plus `data/processed/unified_daily_demand.parquet`. Raw portal CSVs, caches, and notebooks stay local; use `scripts/build_unified_dataset.py` to rebuild.
 
 **Full data guide:** [docs/DATA_PIPELINE.md](docs/DATA_PIPELINE.md) — where each dataset comes from, what it contains, and how it joins into `unified_daily_demand.parquet`.
 
@@ -86,7 +86,7 @@ python scripts/build_unified_dataset.py --fetch
 python scripts/build_unified_dataset.py --fetch --start 2017-01-01 --end 2026-05-19
 ```
 
-Output: **`data/processed/data.csv`** — one row per day, one real licensed café (modeling-ready).
+Output: **`data/processed/unified_daily_demand.parquet`** — one row per day, one real licensed café (modeling-ready).
 
 ```python
 from src.unified_dataset import load_modeling_data
