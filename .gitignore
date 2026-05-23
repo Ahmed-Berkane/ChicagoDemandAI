@@ -17,6 +17,7 @@ scripts/
 # --- Data: ignore raw/cache locally; only ship the final parquet ---
 data/*
 !data/processed/
+data/processed/*
 !data/processed/unified_daily_demand.parquet
 
 # --- Python / env ---
