@@ -15,9 +15,9 @@ Documents/
 scripts/
 
 # --- Data: download / build locally or in CI (see README) ---
-data/
-!data/reference/
-!data/reference/**
+#data/
+#!data/reference/
+#!data/reference/**
 
 # --- Python / env ---
 __pycache__/
