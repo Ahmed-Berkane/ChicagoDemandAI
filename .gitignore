@@ -1,0 +1,56 @@
+# =============================================================================
+# DEPLOYMENT TRACK (keep in git):
+#   src/                  Python package
+#   requirements.txt      dependencies
+#   app_streamlit/        Streamlit app (when present)
+#   models/               preprocessor + trained model for inference
+#   data/reference/       small curated event calendar (~2 KB)
+#   README.md
+# =============================================================================
+
+# --- Local development (not needed to run the app) ---
+#notebooks/
+docs/
+Documents/
+scripts/
+
+# --- Data: download / build locally or in CI (see README) ---
+data/
+!data/reference/
+!data/reference/**
+
+# --- Python / env ---
+__pycache__/
+*.py[cod]
+*$py.class
+.Python
+.venv/
+venv/
+.env
+.env.*
+
+# --- Jupyter ---
+.ipynb_checkpoints/
+*.ipynb
+
+# --- IDE / OS ---
+.idea/
+.vscode/
+.cursor/
+.DS_Store
+Thumbs.db
+*.swp
+
+# --- Build / cache ---
+*.parquet
+*.egg-info/
+dist/
+build/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# --- Logs & temp ---
+*.log
+*.tmp
+~$*
