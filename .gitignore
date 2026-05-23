@@ -4,7 +4,7 @@
 #   requirements.txt      dependencies
 #   app_streamlit/        Streamlit app (when present)
 #   models/               preprocessor + trained model for inference
-#   data/reference/       small curated event calendar (~2 KB)
+#   data/processed/unified_daily_demand.parquet   final modeling table
 #   README.md
 # =============================================================================
 
@@ -14,10 +14,11 @@ docs/
 Documents/
 scripts/
 
-# --- Data: download / build locally or in CI (see README) ---
-#data/
-#!data/reference/
-#!data/reference/**
+# --- Data: ignore raw/cache locally; only ship the final parquet ---
+data/*
+!data/processed/
+data/processed/*
+!data/processed/unified_daily_demand.parquet
 
 # --- Python / env ---
 __pycache__/
@@ -43,6 +44,7 @@ Thumbs.db
 
 # --- Build / cache ---
 *.parquet
+!data/processed/unified_daily_demand.parquet
 *.egg-info/
 dist/
 build/

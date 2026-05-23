@@ -7,8 +7,9 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 HISTORY_START = date(2019, 1, 1)
 DATA_DIR = PROJECT_ROOT / "data"
 
-# Only raw inputs and a single final output file.
-UNIFIED_DATASET_PARQUET_FILE = DATA_DIR / "unified_daily_demand.parquet"
+# Raw inputs stay local; the final modeling table lives under data/processed/ (tracked in git).
+PROCESSED_DATA_DIR = DATA_DIR / "processed"
+UNIFIED_DATASET_PARQUET_FILE = PROCESSED_DATA_DIR / "unified_daily_demand.parquet"
 
 # Downtown Chicago (matches city crime/event geography)
 CHICAGO_LAT = 41.8781
@@ -29,6 +30,9 @@ CHICAGO_CTA_RIDERSHIP_API = "https://data.cityofchicago.org/resource/6iiy-9s97.j
 CHICAGO_SPECIAL_EVENTS_API = "https://data.cityofchicago.org/resource/xgse-8eg7.json"
 MAJOR_EVENTS_FILE = DATA_DIR / "major_chicago_events.csv"
 OPEN_METEO_ARCHIVE_API = "https://archive-api.open-meteo.com/v1/archive"
+NASA_POWER_DAILY_API = "https://power.larc.nasa.gov/api/temporal/daily/point"
+# Optional offline cache (created after first successful fetch; speeds up rebuilds).
+WEATHER_REFERENCE_FILE = DATA_DIR / "weather_chicago_daily.csv"
 
 MLB_STATS_API = "https://statsapi.mlb.com/api/v1/schedule"
 MLB_CUBS_TEAM_ID = 112
