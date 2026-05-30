@@ -7,7 +7,7 @@ from typing import Literal
 
 import pandas as pd
 
-from src.config import COFFEE_SHOP_LICENSE_KEYWORDS, DATA_DIR, DATASETS
+from src.config import COFFEE_SHOP_LICENSE_KEYWORDS, DATASETS, RAW_DATA_DIR
 
 DatasetName = Literal[
     "business_licenses",
@@ -18,7 +18,7 @@ DatasetName = Literal[
 
 
 def _path(name: str) -> Path:
-    return DATA_DIR / DATASETS[name]
+    return RAW_DATA_DIR / DATASETS[name]
 
 
 def load_business_licenses(*, coffee_shops_only: bool = False) -> pd.DataFrame:
@@ -86,9 +86,33 @@ def load_crimes(*, full_history: bool = False) -> pd.DataFrame:
     return df
 
 
-def load_special_events() -> pd.DataFrame:
+def expand_special_events_daily(df: pd.DataFrame) -> pd.DataFrame:
+    """Keep event_name, intensity, demand_type, category; one row per day from start_date to end_date."""
+    out = df.copy()
+    out["start_date"] = pd.to_datetime(out["start_date"])
+    out["end_date"] = pd.to_datetime(out["end_date"])
+    out = out[["event_name", "intensity", "demand_type", "category", "start_date", "end_date"]]
+    out["date"] = out.apply(
+        lambda r: pd.date_range(r["start_date"], r["end_date"], freq="D").tolist(),
+        axis=1,
+    )
+    daily = (
+        out.explode("date")[["event_name", "intensity", "demand_type", "category", "date"]]
+        .reset_index(drop=True)
+    )
+    daily["date"] = pd.to_datetime(daily["date"]).dt.normalize()
+    return daily
+
+
+def load_special_events(*, daily: bool = False) -> pd.DataFrame:
     """City special events (festivals, street closures, etc.)."""
     df = pd.read_csv(_path("special_events"))
+    if "start_date" in df.columns and "end_date" in df.columns:
+        if daily:
+            return expand_special_events_daily(df)
+        df["start_date"] = pd.to_datetime(df["start_date"], errors="coerce")
+        df["end_date"] = pd.to_datetime(df["end_date"], errors="coerce")
+        return df
     df["Date"] = pd.to_datetime(df["Date"], errors="coerce")
     return df
 

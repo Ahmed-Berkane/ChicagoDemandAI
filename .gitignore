@@ -15,6 +15,7 @@ Documents/
 scripts/
 
 # --- Data: ignore raw/cache locally; only ship the final parquet ---
+DataSourceCSV/
 data/*
 !data/processed/
 data/processed/*
