@@ -1,101 +1,94 @@
-"""Feature engineering for demand forecasting (no target leakage)."""
-
-from __future__ import annotations
-
 import numpy as np
 import pandas as pd
 
-# Columns derived from the synthetic target generator — never use as model inputs
-LEAKAGE_COLUMNS = frozenset(
-    {
-        "customer_traffic",
-        "is_synthetic_target",
-        "weather_effect",
-        "event_effect",
-        "cta_effect",
-        "traffic_noise",
-    }
+from src.config import (
+    BOOL_COLS,
+    CAT_COLS,
+    NUM_COLS,
+    SERIES_COLS,
+    TARGET,
 )
-
-DROP_COLUMNS = LEAKAGE_COLUMNS | frozenset(
-    {
-        "date",
-        "holiday_name",
-        "business_name",
-        "business_address",
-        "license_description",
-        "neighborhood",
-        "day_type",
-    }
-)
+from src.regions import REGION_MAP
 
 
-def engineer_features(df: pd.DataFrame) -> pd.DataFrame:
-    """Add calendar, weather, event, and lag features (past-only lags)."""
-    out = df.sort_values("date").copy()
+def add_traffic_lags(df: pd.DataFrame) -> pd.DataFrame:
+    out = df.copy()
     out["date"] = pd.to_datetime(out["date"])
-
-    doy = out["date"].dt.dayofyear
-    out["season_sin"] = np.sin(2 * np.pi * doy / 365.25)
-    out["season_cos"] = np.cos(2 * np.pi * doy / 365.25)
-    out["month"] = out["date"].dt.month
-    out["day_of_month"] = out["date"].dt.day
-
-    temp = out["temperature_f"].fillna(out["temperature_f"].median())
-    out["temp_deviation_comfort"] = (temp - 65).abs()
-    out["is_rainy"] = (out["precipitation_in"].fillna(0) >= 0.1).astype(int)
-    out["is_snowy"] = (out["snowfall_in"].fillna(0) > 0).astype(int)
-    out["is_extreme_cold"] = (temp < 20).astype(int)
-
-    def _b(col: str) -> pd.Series:
-        if col not in out.columns:
-            return pd.Series(0, index=out.index, dtype=int)
-        return out[col].fillna(0).astype(int)
-
-    out["event_score"] = (
-        _b("cubs_home_game") * 1.0
-        + _b("bulls_home_game") * 0.7
-        + _b("is_major_festival") * 1.5
-        + np.minimum(out.get("city_special_events", 0).fillna(0), 3) * 0.2
-    )
-
-    out["weekend_payweek"] = _b("is_weekend") * _b("is_payweek")
-    out["rainy_weekend"] = out["is_rainy"] * _b("is_weekend")
-
-    if "crime_count" in out.columns and "permit_count" in out.columns:
-        out["crime_permit_ratio"] = out["crime_count"] / (out["permit_count"] + 1)
-
-    # Past-only rolling / lags (no future information)
-    if "cta_total_rides" in out.columns:
-        out["cta_roll7"] = out["cta_total_rides"].shift(1).rolling(7, min_periods=1).mean()
-    if "crime_count" in out.columns:
-        out["crime_roll7"] = out["crime_count"].shift(1).rolling(7, min_periods=1).mean()
-    if "customer_traffic" in out.columns:
-        out["traffic_lag1"] = out["customer_traffic"].shift(1)
-        out["traffic_lag7"] = out["customer_traffic"].shift(7)
-        out["traffic_roll7"] = out["customer_traffic"].shift(1).rolling(7, min_periods=1).mean()
-
+    out = out.sort_values(SERIES_COLS + ["date"])
+    grouped = out.groupby(SERIES_COLS, sort=False)[TARGET]
+    out["traffic_lag1"] = grouped.shift(1)
+    out["traffic_lag7"] = grouped.shift(7)
+    out["traffic_roll7"] = grouped.transform(lambda s: s.shift(1).rolling(7, min_periods=1).mean())
     return out
 
 
-def chronological_split(
-    df: pd.DataFrame,
-    train_ratio: float = 0.70,
-    val_ratio: float = 0.15,
+def apply_traffic_lags(
+    train: pd.DataFrame,
+    val: pd.DataFrame,
+    test: pd.DataFrame,
 ) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
-    """Time-ordered train / validation / test (no random shuffle)."""
-    df = df.sort_values("date").reset_index(drop=True)
-    n = len(df)
-    train_end = int(n * train_ratio)
-    val_end = int(n * (train_ratio + val_ratio))
-    return df.iloc[:train_end], df.iloc[train_end:val_end], df.iloc[val_end:]
+    combined = pd.concat(
+        [
+            train.assign(_split="train"),
+            val.assign(_split="val"),
+            test.assign(_split="test"),
+        ],
+        ignore_index=True,
+    )
+    combined = add_traffic_lags(combined)
+    train_out = combined.loc[combined["_split"] == "train"].drop(columns="_split")
+    val_out = combined.loc[combined["_split"] == "val"].drop(columns="_split")
+    test_out = combined.loc[combined["_split"] == "test"].drop(columns="_split")
+    return train_out, val_out, test_out
 
 
-def feature_target_split(df: pd.DataFrame, target: str = "customer_traffic"):
-    """Return X, y with leakage and ID columns removed."""
-    engineered = engineer_features(df)
-    y = engineered[target].astype(float)
-    X = engineered.drop(columns=[c for c in engineered.columns if c in DROP_COLUMNS], errors="ignore")
-    X = X.select_dtypes(include=[np.number, bool])
-    X = X.astype(float)
-    return X, y, engineered
+def create_date_features(X: pd.DataFrame) -> pd.DataFrame:
+    X = X.copy()
+    X["date"] = pd.to_datetime(X["date"], errors="coerce")
+
+    month = X["date"].dt.month
+    day_of_week = X["date"].dt.dayofweek
+    day_of_year = X["date"].dt.dayofyear
+    min_year = X["date"].dt.year.min()
+    X["year"] = X["date"].dt.year - min_year
+
+    X["month_sin"] = np.sin(2 * np.pi * month / 12)
+    X["month_cos"] = np.cos(2 * np.pi * month / 12)
+    X["day_of_week_sin"] = np.sin(2 * np.pi * day_of_week / 7)
+    X["day_of_week_cos"] = np.cos(2 * np.pi * day_of_week / 7)
+    X["day_of_year_sin"] = np.sin(2 * np.pi * day_of_year / 365)
+    X["day_of_year_cos"] = np.cos(2 * np.pi * day_of_year / 365)
+
+    X = X.drop(columns=["date"])
+
+    if "COMMUNITY AREA" in X.columns:
+        X["region"] = (
+            pd.to_numeric(X["COMMUNITY AREA"], errors="coerce")
+            .astype("Int64")
+            .map(REGION_MAP)
+            .fillna("OTHER")
+        )
+        X = X.drop(columns=["COMMUNITY AREA"])
+    elif "region" in X.columns:
+        X["region"] = X["region"].astype(str).fillna("OTHER")
+
+    for col in NUM_COLS:
+        if col in X.columns:
+            X[col] = pd.to_numeric(X[col], errors="coerce")
+
+    for col in BOOL_COLS:
+        if col in X.columns:
+            X[col] = X[col].astype("int64")
+
+    for col in CAT_COLS:
+        if col in X.columns:
+            X[col] = X[col].astype(str)
+
+    return X
+
+
+def build_feature_matrix(df: pd.DataFrame) -> tuple[pd.DataFrame, pd.Series]:
+    X = create_date_features(df.drop(columns=[TARGET]))
+    y = df[TARGET].astype(float)
+    feature_cols = NUM_COLS + BOOL_COLS + CAT_COLS
+    return X[feature_cols], y

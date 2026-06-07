@@ -1,10 +1,10 @@
 # =============================================================================
 # DEPLOYMENT TRACK (keep in git):
 #   src/                  Python package
+#   src/data/unified_df.parquet   source modeling table (from data_loader notebook)
 #   requirements.txt      dependencies
 #   app_streamlit/        Streamlit app (when present)
 #   models/               preprocessor + trained model for inference
-#   data/processed/unified_daily_demand.parquet   final modeling table
 #   README.md
 # =============================================================================
 
@@ -14,12 +14,13 @@ docs/
 Documents/
 scripts/
 
-# --- Data: ignore raw/cache locally; only ship the final parquet ---
+# --- Data: runner.py regenerates splits from unified_df ---
 DataSourceCSV/
-data/*
-!data/processed/
-data/processed/*
-!data/processed/unified_daily_demand.parquet
+/data/
+data/
+
+src/data/*
+!src/data/unified_df.parquet
 
 # --- Python / env ---
 __pycache__/
@@ -45,7 +46,7 @@ Thumbs.db
 
 # --- Build / cache ---
 *.parquet
-!data/processed/unified_daily_demand.parquet
+!src/data/unified_df.parquet
 *.egg-info/
 dist/
 build/
