@@ -17,9 +17,10 @@ scripts/
 # --- Data: runner.py regenerates splits from unified_df ---
 DataSourceCSV/
 /data/
-data/
 
+# Ignore everything under src/data/ except the deployed parquet
 src/data/*
+!src/data/
 !src/data/unified_df.parquet
 
 # --- Python / env ---
